@@ -4,9 +4,9 @@
 
 ## Set Environment
 ### 프로젝트 환경
-- OS: Ubuntu 22.04 (Jammy)
-- ROS 2: Humble
-- Camera: Intel RealSense
+- OS: Ubuntu 24.04 / Ubuntu 22.04
+- ROS 2: Jazzy / Humble
+- Camera: Intel RealSense D455F
 - Robot: Doosan DSR
 - Build tool: colcon
 ### 기본 패키지 설치
