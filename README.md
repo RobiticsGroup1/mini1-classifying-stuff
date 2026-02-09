@@ -48,3 +48,23 @@ git clone https://github.com/DoosanRobotics/doosan-robot2.git
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+## Usage
+### camera node 생성
+```
+# terminal 1
+ros2 launch realsense2_camera rs_launch.py \
+color.enable:=true depth.enable:=true align_depth.enable:=true
+```
+### 로봇 node 생성
+```
+# terminal 2
+ros2 launch dsr_bringup2 dsr_bringup2_rviz.launch.py \
+mode:=real host:=110.120.1.68 port:=12345 model:=e0509
+```
+### 실행 파일
+```
+# terminal 3
+# 파일의 경로는 gripper_drl_controller.py와 동일한 폴더에 있어야 합니다.
+python3 ./grip_realsense.py
+```
