@@ -62,9 +62,14 @@ color.enable:=true depth.enable:=true align_depth.enable:=true
 ros2 launch dsr_bringup2 dsr_bringup2_rviz.launch.py \
 mode:=real host:=110.120.1.68 port:=12345 model:=e0509
 ```
-### 실행 파일
+### UI node 생성
 ```
 # terminal 3
+python3 ./pyqt_pub.py
+```
+### robot node 생성
+```
+# terminal 4
 # 파일의 경로는 gripper_drl_controller.py와 동일한 폴더에 있어야 합니다.
 python3 ./grip_realsense.py
 ```
