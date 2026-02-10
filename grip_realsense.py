@@ -128,7 +128,7 @@ class RobotControllerNode(Node):
             wait(0.5)
 
             self.get_logger().info(f"목표 지점으로 이동합니다: {target_pos_list}")
-            movel(posx(target_pos_list), vel=VELOCITY, acc=ACC)
+            movel(posx(target_pos_list), vel=80, acc=ACC)
             wait(0.5)
 
             # gripper 물건 잡기
@@ -140,15 +140,15 @@ class RobotControllerNode(Node):
             wait(1)
 
             # 물건을 놓는 지점으로 이동
-            movel(posx(536.9, -309.5, target_pos_list_up[2], current_pos[3], current_pos[4], current_pos[5]), vel=VELOCITY, acc=ACC)
-            wait(1)
+            movel(posx(536.9, -309.5, target_pos_list_up[2], current_pos[3], current_pos[4], current_pos[5]), vel=80, acc=70)
+            wait(0.5)
 
-            movel(posx(536.9, -309.5, 150.0, current_pos[3], current_pos[4], current_pos[5]), vel=VELOCITY, acc=ACC)
-            wait(1)
+            movel(posx(536.9, -309.5, 150.0, current_pos[3], current_pos[4], current_pos[5]), vel=80, acc=70)
+            wait(0.5)
 
             # gripper 물건 놓기
             self.gripper.move(0)
-            wait(2)
+            wait(4)
 
             self.get_logger().info("초기 자세로 복귀합니다.")
             movej(p_start, VELOCITY, ACC)
@@ -156,7 +156,7 @@ class RobotControllerNode(Node):
         except Exception as e:
             self.get_logger().error(f"로봇 이동 및 그리퍼 제어 중 오류 발생: {e}")
 
-    def move_callback(self, class_id: str, number: int):
+    def move_callback2(self, class_id: str):
         from DSR_ROBOT2 import get_current_posx, movel, wait, movej
         from DR_common2 import posx, posj
 
@@ -170,84 +170,83 @@ class RobotControllerNode(Node):
         self.gripper.move(0)
         wait(2)
         
-        for i in range(number):
-            try:
-                img = self.latest_cv_color.copy()
+        try:
+            img = self.latest_cv_color.copy()
 
-                # masking
-                img[200:600, 0:300] = (0, 0, 0)
+            # masking
+            img[200:600, 0:300] = (0, 0, 0)
 
-                self.latest_cv_vis = self.latest_cv_color.copy()
-                depth_img = self.latest_cv_depth_mm.copy()
-                object_loc_dict = {'0': [], '1': [], '2': [], '3': [], '4': []}
-                
-                # Detect objects using YOLO
-                results = model(img)
-
-                # Process the results
-                for result in results:
-                    boxes = result.boxes
-                    for box in boxes:
-                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype('int')
-                        confidence = box.conf[0].cpu().numpy()
-                        cls_id = str(int(box.cls[0].cpu().numpy()))
-
-                        if confidence < 0.5:
-                            continue
-
-                        # Calculate the distance to the object
-                        object_depth = np.median(depth_img[y1:y2, x1:x2])  # mm
-                        label= f"{object_dict[cls_id]} / {object_depth*0.001:.2f}m"
-                        object_loc_dict[str(int(cls_id))] = [int((x1+x2)/2), int((y1+y2)/2), object_depth]
-                        
-                        # Draw a rectangle around the object
-                        cv2.rectangle(self.latest_cv_vis, (x1, y1), (x2, y2), (252, 119, 30), 2)
-
-                        # Draw the bounding box
-                        cv2.putText(self.latest_cv_vis, label, (x1, y1-10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (252, 119, 30), 2)
-
-                depth_mm = object_loc_dict[class_id][-1]
-
-            except:
-                self.get_logger().warn("Detection Error")
-                return
+            self.latest_cv_vis = self.latest_cv_color.copy()
+            depth_img = self.latest_cv_depth_mm.copy()
+            object_loc_dict = {'0': [], '1': [], '2': [], '3': [], '4': []}
             
-            if depth_mm == 0:
-                print(f"해당 {model.names[class_id]}의 깊이를 측정할 수 없습니다 (값: 0).")
-                return
-            
-            depth_m = float(depth_mm) / 1000.0
-            u = object_loc_dict[class_id][0]
-            v = object_loc_dict[class_id][1]
+            # Detect objects using YOLO
+            results = model(img)
 
-            point_3d = rs.rs2_deproject_pixel_to_point(self.intrinsics, [u, v], depth_m)
-            
-            x_mm = point_3d[1] * 1000
-            y_mm = point_3d[0] * 1000
-            z_mm = point_3d[2] * 1000
+            # Process the results
+            for result in results:
+                boxes = result.boxes
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype('int')
+                    confidence = box.conf[0].cpu().numpy()
+                    cls_id = str(int(box.cls[0].cpu().numpy()))
 
-            # transform camera to base
-            final_x = x_mm + 510  # 620
-            final_y = y_mm + 175  # 0
-            final_z = 985 - z_mm  # 950
-            if (final_z <= 110):
-                final_z = 110
+                    if confidence < 0.5:
+                        continue
 
-            print("--- 변환된 최종 3D 좌표 ---")
-            print(f"픽셀 좌표: (u={u}, v={v}), Depth: {depth_m*1000:.1f} mm")
-            print(f"로봇 목표 좌표: X={final_x:.1f}, Y={final_y:.1f}, Z={final_z:.1f}\n")
+                    # Calculate the distance to the object
+                    object_depth = np.median(depth_img[y1:y2, x1:x2])  # mm
+                    label= f"{object_dict[cls_id]} / {object_depth*0.001:.2f}m"
+                    object_loc_dict[str(int(cls_id))] = [int((x1+x2)/2), int((y1+y2)/2), object_depth]
+                    
+                    # Draw a rectangle around the object
+                    cv2.rectangle(self.latest_cv_vis, (x1, y1), (x2, y2), (252, 119, 30), 2)
 
-            self.move_robot_and_control_gripper(final_x, final_y, final_z)
-            print("=" * 50)
+                    # Draw the bounding box
+                    cv2.putText(self.latest_cv_vis, label, (x1, y1-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (252, 119, 30), 2)
 
+            depth_mm = object_loc_dict[class_id][-1]
+
+        except:
+            self.get_logger().warn("Detection Error")
+            return
+        
+        if depth_mm == 0:
+            print(f"해당 {model.names[class_id]}의 깊이를 측정할 수 없습니다 (값: 0).")
+            return
+        
+        depth_m = float(depth_mm) / 1000.0
+        u = object_loc_dict[class_id][0]
+        v = object_loc_dict[class_id][1]
+
+        point_3d = rs.rs2_deproject_pixel_to_point(self.intrinsics, [u, v], depth_m)
+        
+        x_mm = point_3d[1] * 1000
+        y_mm = point_3d[0] * 1000
+        z_mm = point_3d[2] * 1000
+
+        # transform camera to base
+        final_x = x_mm + 510  # 620
+        final_y = y_mm + 175  # 0
+        final_z = 990 - z_mm  # 950
+        if (final_z <= 110):
+            final_z = 110
+
+        print("--- 변환된 최종 3D 좌표 ---")
+        print(f"픽셀 좌표: (u={u}, v={v}), Depth: {depth_m*1000:.1f} mm")
+        print(f"로봇 목표 좌표: X={final_x:.1f}, Y={final_y:.1f}, Z={final_z:.1f}\n")
+
+        self.move_robot_and_control_gripper(final_x, final_y, final_z)
+        print("=" * 50)
 
 def wait_for_input(callback):
         class_id = input("Object ID: ").strip()
         count = int(input("개수: "))
 
-        callback(class_id, count)
-
+        for i in range(count):
+            #callback(class_id, count)
+            callback(class_id)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -266,7 +265,7 @@ def main(args=None):
     robot_controller = RobotControllerNode()
 
     cv2.namedWindow("RealSense Camera")
-    wait_for_input(robot_controller.move_callback)
+    wait_for_input(robot_controller.move_callback2)
 
     try:
         while rclpy.ok():
